@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APO - REAL API GENERATOR v14.0</title>
+    <style>
+        :root { --neon: #00ff88; --bg: #0a0a0a; --panel: #161616; --text: #e0e0e0; --error: #ff4444; }
+        * { box-sizing: border-box; font-family: 'Fira Code', 'Consolas', monospace; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .header { display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #333; padding-bottom: 10px; color: var(--neon); }
+        
+        input, textarea { 
+            width: 100%; background: var(--panel); border: 1px solid #333; 
+            color: #fff; padding: 15px; border-radius: 4px; outline: none; margin-bottom: 10px;
+            resize: vertical; min-height: 150px;
+        }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 15px; cursor: pointer; border: none; font-weight: bold; text-transform: uppercase; border-radius: 4px; transition: 0.3s; }
+        .btn-generate { background: var(--neon); color: #000; }
+        .btn-copy { background: #333; color: var(--neon); border: 1px solid var(--neon); }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); }
+
+        .display { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 10px; }
+        .box { background: #000; border: 1px solid #333; border-radius: 4px; }
+        .box-header { padding: 8px 15px; background: #1a1a1a; font-size: 11px; color: var(--neon); border-bottom: 1px solid #333; }
+        pre { margin: 0; padding: 20px; height: 500px; overflow: auto; font-size: 13px; line-height: 1.5; color: #00d4ff; white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <span>ENGINE: PERSISTENT_PRO_v14.0</span>
+        <span id="status">STATUS: AGUARDANDO ESTRUTURA JSON</span>
+    </div>
+
+    <textarea id="jsonInput" placeholder="COLE O JSON DA API PARA CLONAR A ESTRUTURA REAL..."></textarea>
+
+    <div class="controls">
+        <button class="btn-generate" onclick="generateRealAPI()">Gerar Servidor Real v14.0</button>
+        <button class="btn-copy" onclick="copyCode()">Copiar server.js</button>
+    </div>
+
+    <div class="display">
+        <div class="box">
+            <div class="box-header">CÓDIGO DO SERVIDOR NODE.JS (server.js)</div>
+            <pre id="codeOutput">// O código da API clonada aparecerá aqui após processar o JSON...</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+    function generateRealAPI() {
+        const input = document.getElementById('jsonInput').value.trim();
+        if (!input) return alert("Por favor, cole um JSON válido primeiro!");
+
+        try {
+            const data = JSON.parse(input);
+            const initialData = Array.isArray(data) ? data : [data];
+            
+            // Gerador de código v14.0 com persistência e filtros
+            const serverCode = `/**
+ * APO - REAL API CLONE v14.0
+ * Backend Persistente com Persistência em JSON e Logs em Tempo Real
+ */
+const express = require('express');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const DB_FILE = path.join(__dirname, 'database.json');
+
+// Middlewares essenciais
+app.use(cors());
+app.use(express.json());
+
+// Logger simples para monitorar requisições
+app.use((req, res, next) => {
+    console.log(\`[\${new Date().toLocaleTimeString()}] \${req.method} \${req.url}\`);
+    next();
+});
+
+// Inicialização do Banco de Dados persistente
+if (!fs.existsSync(DB_FILE)) {
+    console.log("Criando novo banco de dados...");
+    fs.writeFileSync(DB_FILE, JSON.stringify(${JSON.stringify(initialData, null, 4)}, null, 4));
+}
+
+const readDB = () => JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+const writeDB = (data) => fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 4));
+
+// --- ENDPOINTS DA API REAL ---
+
+// [GET] Listar tudo (com suporte a filtros por query)
+app.get('/api/resource', (req, res) => {
+    let db = readDB();
+    
+    // Lógica de filtro automático baseada na query string
+    if (Object.keys(req.query).length > 0) {
+        db = db.filter(item => {
+            return Object.keys(req.query).every(key => 
+                String(item[key]).toLowerCase().includes(String(req.query[key]).toLowerCase())
+            );
+        });
+    }
+    res.json(db);
+});
+
+// [POST] Criar novo registro com ID único e Data
+app.post('/api/resource', (req, res) => {
+    const db = readDB();
+    const newItem = { 
+        id: Date.now(), 
+        ...req.body,
+        _createdAt: new Date().toISOString()
+    };
+    db.push(newItem);
+    writeDB(db);
+    res.status(201).json(newItem);
+});
+
+// [PUT] Atualizar registro existente
+app.put('/api/resource/:id', (req, res) => {
+    let db = readDB();
+    const index = db.findIndex(item => item.id == req.params.id);
+    
+    if (index === -1) return res.status(404).json({ error: "Registro não encontrado" });
+    
+    db[index] = { ...db[index], ...req.body, id: db[index].id, _updatedAt: new Date().toISOString() };
+    writeDB(db);
+    res.json(db[index]);
+});
+
+// [DELETE] Remover permanentemente
+app.delete('/api/resource/:id', (req, res) => {
+    let db = readDB();
+    const initialLength = db.length;
+    const newDb = db.filter(item => item.id != req.params.id);
+    
+    if (newDb.length === initialLength) return res.status(404).json({ error: "ID não encontrado" });
+    
+    writeDB(newDb);
+    res.json({ success: true, message: "Deletado com sucesso" });
+});
+
+// Inicialização
+app.listen(PORT, () => {
+    console.log('------------------------------------');
+    console.log('🚀 SERVIDOR API REAL ONLINE');
+    console.log('📍 ENDPOINT: http://localhost:' + PORT + '/api/resource');
+    console.log('💾 PERSISTÊNCIA: ' + DB_FILE);
+    console.log('------------------------------------');
+});`;
+
+            document.getElementById('codeOutput').innerText = serverCode;
+            document.getElementById('status').innerText = "STATUS: CLONE v14.0 GERADO";
+            document.getElementById('status').style.color = "var(--neon)";
+        } catch (e) {
+            alert("Erro: O conteúdo colado não é um JSON válido.");
+        }
+    }
+
+    function copyCode() {
+        const code = document.getElementById('codeOutput').innerText;
+        if(code.startsWith("//")) return alert("Gere o código primeiro!");
+        navigator.clipboard.writeText(code);
+        alert("Código server.js copiado com sucesso!");
+    }
+</script>
+</body>
+</html>
